@@ -2,6 +2,8 @@
 
 Setup an automated backup of your webserver to an Amazon S3 account. Optimized for Mediatemple DV Managed 4.
 
+Adapted from [github.com/mdylanbell/gsbackup](https://github.com/mdylanbell/gsbackup), without the web application part.
+
 ## Overview
 
 Take all the files and databases of your webserver and upload it to your S3 account.
@@ -18,6 +20,10 @@ The script is currently optimzed for Mediatemple DV Managed 4 server.
 Once installed, connect to your webserver through SSH, go to the location where you've installed the script and launch the script using:
 
 `sh backup.sh`
+
+You could also trigger the shell-script as a cron-job, but I prefer using as an [Alfred](http://www.alfredapp.com/) task.
+
+## Required file structure
 
 The current version of the script is deigned to be used with Mediatemple DV Managed 4 server, so the folder structure needs to be the following:
 
@@ -53,7 +59,7 @@ Follow th instructions on this page (http://s3tools.org/repositories). For a Med
 4. Type `yum install s3cmd` to install the package.
 5. You now have s3cmd installed.
 
-### 2. Configure s3
+### 2. Configure S3
 
 You will need to create an Access Key and an Secret Access Key to access your S3 account. Use the Amazon Account Center to do so. Then, configure you S3 connection with the keys you received by email, using the following command :
 
@@ -63,7 +69,7 @@ You can make sure the connection is good by listing your current buckets:
 
 `s3cmd ls`
 
-or if you have some permission issues, you might have to select a specific bucket:
+or if you have some permission issues, you might have to select a specific bucket. For example:
 
 `s3cmd ls s3://jmcouillard/gsbackup/`
 
@@ -101,7 +107,7 @@ You will need to edit s3backups.php in order to reflect your server specificatio
 
 ### 5. Settings for backup.sh
 
-As shell-shortcut, *backup.sh* is a two-lines file taht consist of the follwing :
+As shell-shortcut, *backup.sh* is a two-lines file that consist of the follwing :
 
 ```
 php s3backups.php webspace1.com webspace2.com > ./backups/script.sh
