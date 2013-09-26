@@ -1,6 +1,8 @@
 # S3 backups
 
-Setup an automated backup of your webserver to an Amazon S3 account. Optimized for Mediatemple DV Managed 4.
+Setup an automated backup of your webserver to an Amazon S3 account. Optimized for Mediatemple DV Managed 4, in "power-user" mode.
+
+Should be working correctly on any CentOS/Plesk 11.5 system.
 
 Adapted from [github.com/mdylanbell/gsbackup](https://github.com/mdylanbell/gsbackup), without the web application part.
 
