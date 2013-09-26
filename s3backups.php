@@ -1,13 +1,14 @@
 <?php
 
 
+
 /******************************************************************************
  * Path settings
  ******************************************************************************/
 
 define('DOMAINS_PATH', '/var/www/vhosts/');
 define('BACKUP_PATH', "/root/data/backups/");
-define('HTTP_FOLDER',  "/httpdocs/");
+define('HTTP_FOLDER',  "/httpdocs");
 
 
 /******************************************************************************
@@ -16,16 +17,17 @@ define('HTTP_FOLDER',  "/httpdocs/");
 define('PYTHONPATH', "/usr/bin/python". ":" . "/usr/lib/python2.6");
 define('S3CFG_FILE_PATH', "/root/.s3cfg");
 define('S3CMD_FILE', "/usr/bin/s3cmd");
-define('S3_REMOTE_PATH', "user/gsbackup/");
+define('S3_REMOTE_PATH', "jmcouillard/gsbackup/");
 
 
 /******************************************************************************
  * DB settings
  ******************************************************************************/
 define('DB_HOST', "localhost");
-define('DB_USER', "user");
-define('DB_PASS', 'password');
-// define('DB_PASS_SHADOW', '`cat /etc/psa/.psa.shadow`');
+define('DB_USER', "admin");
+// define('DB_PASS', 'password');
+define('DB_PASS_SHADOW', '/etc/psa/.psa.shadow');
+
 
 
 /******************************************************************************
@@ -34,7 +36,7 @@ define('DB_PASS', 'password');
 date_default_timezone_set('UTC');
 $datestamp = date("Y-m-d-H-i-s", time());
 $domains = getDomains();
-$mysqlpassword = defined('DB_PASS_SHADOW') ? file_get_contents(DB_PASS_SHADOW) : DB_PASS;
+$mysqlpassword = defined('DB_PASS_SHADOW') ? trim(file_get_contents(DB_PASS_SHADOW)) : DB_PASS;
 $link = mysql_connect(DB_HOST,DB_USER,$mysqlpassword);
 $dbs = getDatabases($link);
 $tasks = array();
@@ -43,7 +45,9 @@ createBaseTasks();
 createDatabasesTask($dbs, $datestamp);
 createDomainsTasks($domains, $datestamp);
 
+saveDomainsList($domains);
 echo outputShell();
+
 exit;
 
 //saveShell();
@@ -127,14 +131,24 @@ function getDomains()
 	} else {
 		$webspaces = array("");	
 	}
+
+	clearstatcache();
 	
 	foreach ($webspaces as $webspace) {
-	    $dh = opendir(DOMAINS_PATH . $webspace . "/" . HTTP_FOLDER);
+
+		// Open websace folder and list its files
+		$webspaceHttpFolder = DOMAINS_PATH  . $webspace .  HTTP_FOLDER;
+	    $dh = opendir($webspaceHttpFolder);
+
 	    while (($filename = readdir($dh)) != false)
 	    {
-	        if (is_dir(DOMAINS_PATH . $filename) && !is_link(DOMAINS_PATH . $filename ) && $filename != "." && $filename != ".." )
+	    	// Define current site full path
+	    	$sitepath = $webspaceHttpFolder . "/" . $filename;
+
+	    	// Add to domains list if it is a valid folder
+	        if (is_dir($sitepath) && !is_link($sitepath) && $filename != "." && $filename != ".." )
 	        {
-	        	$path = DOMAINS_PATH . $webspace . "/" . HTTP_FOLDER . $filename;
+	        	$path = $sitepath;
 				$domains[] = array("name"=>$filename, "webspace"=>$webspace, "path"=>$path);
 	        }
 	    }
@@ -194,6 +208,14 @@ function createDatabasesTask($dbs, $datestamp) {
         // Add task
         $tasks[$db] = $cmds;
 	}
+}
+
+function saveDomainsList($domains) {
+    $fp = fopen(BACKUP_PATH . "domains.txt", 'w');
+    foreach ($domains as $domain) {
+    	fwrite($fp, $domain["path"] . "\n");
+    }
+    fclose($fp);
 }
 
 ?>
