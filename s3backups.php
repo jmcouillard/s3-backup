@@ -35,7 +35,8 @@ define('DB_PASS_SHADOW', '/etc/psa/.psa.shadow');
  ******************************************************************************/
 date_default_timezone_set('UTC');
 $datestamp = date("Y-m-d-H-i-s", time());
-$domains = getDomains();
+$webspaces = getWebspaces();
+$domains = getDomains($webspaces);
 $mysqlpassword = defined('DB_PASS_SHADOW') ? trim(file_get_contents(DB_PASS_SHADOW)) : DB_PASS;
 $link = mysql_connect(DB_HOST,DB_USER,$mysqlpassword);
 $dbs = getDatabases($link);
@@ -44,6 +45,9 @@ $tasks = array();
 createBaseTasks();
 createDatabasesTask($dbs, $datestamp);
 createDomainsTasks($domains, $datestamp);
+createMailTasks($webspaces, $datestamp);
+
+ksort($tasks);
 
 saveDomainsList($domains);
 echo outputShell();
@@ -66,8 +70,8 @@ function outputShell() {
     global $tasks;
     
     $output = "";
-    foreach($tasks as $domain => $cmds) {
-        $output .= 'echo "Processing ' . $domain . ' ..."' . "\n";
+    foreach($tasks as $task => $cmds) {
+        $output .= 'echo "Processing ' . $task . ' ..."' . "\n";
         $output .= implode("\n", $cmds);
         $output .= "\n";
     }    
@@ -110,17 +114,83 @@ function createDomainsTasks($domains, $datestamp) {
 		// $cmds[] = "cd " . DOMAINS_PATH . $domain;
 	    
 	    // Zip file
-		$cmds[] = "tar -zcf " . BACKUP_PATH . $file . " " . $domain["path"];
+		$cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $domain["path"];
+		
+		// Upload to s3
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+       
+       	// Remove file
+		$cmds[] = "rm " . BACKUP_PATH . $file;
+
+        // Add task
+        $tasks[$domain["name"]." DOMAIN"] = $cmds;
+	}
+}
+
+function createDatabasesTask($dbs, $datestamp) {
+	
+	global $tasks;
+	
+	// Output command
+	foreach($dbs as $key => $db) {
+	    
+	    $file = $db . "sql.tar.gz";
+	    $cmds = array();
+
+	    // Defin which mysql password to use
+	    $mysqlPassword = (defined('DB_PASS_SHADOW')) ? '`cat ' . DB_PASS_SHADOW . '`' : DB_PASS;
+
+	    // Backup db
+		// $cmds[] = "mysqldump -h " . DB_HOST . " -u " . DB_USER . " -p" . $mysqlPassword . " " . $db. " > " . BACKUP_PATH . $db . ".sql";
+		$cmds[] = "mysqldump -h " . DB_HOST . " -u " . DB_USER . " -p" . $mysqlPassword . " " . $db . " --default-character-set=utf8 --result-file=" . BACKUP_PATH . $db . ".sql";
+
+	    // Go to backup
+		$cmds[] = "cd " . BACKUP_PATH;
+
+	    // Zip file
+		$cmds[] = "tar -zcPf " . $file . " " . $db . ".sql";
 		
 		// Upload to s3
 		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
         
+       	// Remove file
+		$cmds[] = "rm " . BACKUP_PATH . $file;
+		$cmds[] = "rm " . BACKUP_PATH . $db . ".sql";
+
         // Add task
-        $tasks[$domain["name"]] = $cmds;
+        $tasks[$db." DB"] = $cmds;
 	}
 }
 
-function getDomains()
+function createMailTasks($webspaces, $datestamp)
+{
+	global $tasks;
+	
+	// Output command
+	foreach($webspaces as $key => $webspace) {
+	    
+	    $file = $webspace.".mail.tar.gz";
+	    $cmds = array();
+	    
+	    // Conditional
+		$cmds[] = "if [ -f /usr/local/psa/bin/pleskbackup ]; then";
+	    
+	    // Zip file
+		$cmds[] = "/usr/local/psa/bin/pleskbackup domains-name ".$webspace." --only-mail --output-file=".BACKUP_PATH.$file; 
+		// $cmds[] = "/usr/local/psa/bin/pleskbackup domains-name ".$webspace." -v --only-mail --output-file=".BACKUP_PATH.$file; 
+		
+		// Upload to s3
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+	    
+	    // Conditional
+		$cmds[] = "fi";
+        
+        // Add task
+        $tasks[$webspace . " MAIL"] = $cmds;
+	}
+}
+
+function getWebspaces()
 {
 	global $argc;
 	global $argv;
@@ -131,6 +201,12 @@ function getDomains()
 	} else {
 		$webspaces = array("");	
 	}
+
+	return $webspaces;
+}
+
+function getDomains($webspaces)
+{
 
 	clearstatcache();
 	
@@ -165,7 +241,7 @@ function compareDomains($a, $b)
     $pattern = '/[^.]+\.[^\.]+$/';
     preg_match($pattern, $a["name"], $a_domain);
     preg_match($pattern, $b["name"], $b_domain);
-    return strcmp($a_domain[0], $b_domain[0]);
+    return strcmp(reset($a_domain), reset($b_domain));
 }
 
 function getDatabases($link) {
@@ -180,35 +256,6 @@ function getDatabases($link) {
    return $list;
 }
 
-function createDatabasesTask($dbs, $datestamp) {
-	
-	global $tasks;
-	
-	// Output command
-	foreach($dbs as $key => $db) {
-	    
-	    $file = $db . "_sql.tar.gz";
-	    $cmds = array();
-
-	    // Defin which mysql password to use
-	    $mysqlPassword = (defined('DB_PASS_SHADOW')) ? '`cat ' . DB_PASS_SHADOW . '`' : DB_PASS;
-
-	    // Backup db
-		$cmds[] = "mysqldump -h " . DB_HOST . " -u " . DB_USER . " -p" . $mysqlPassword . " " . $db. " > " . BACKUP_PATH . $db . ".sql";
-		
-	    // Go to backup
-		$cmds[] = "cd " . BACKUP_PATH;
-
-	    // Zip file
-		$cmds[] = "tar -zcf " . $file . " " . $db . ".sql";
-		
-		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
-        
-        // Add task
-        $tasks[$db] = $cmds;
-	}
-}
 
 function saveDomainsList($domains) {
     $fp = fopen(BACKUP_PATH . "domains.txt", 'w');
