@@ -63,14 +63,14 @@ Follow th instructions on this page (http://s3tools.org/repositories). For a Med
 4. Type `yum install s3cmd` to install the package.
 5. You now have s3cmd installed.
 
-#### Using source  (version 1.6.0)
+#### Using source  (version 2.0.1 which is required to avoid broken pipe issues) 
 1. Connect to your server as root.
 2. Install python dependencies : `yum install python-setuptools` (or apt-get if you are on Ubuntu).
 3. Navigate to your folder : `cd /usr/local/src`
-4. Download source archive : `wget http://downloads.sourceforge.net/project/s3tools/s3cmd/1.6.0/s3cmd-1.6.0.tar.gz`
-5. Uncompressed the archive : `tar -zxvf s3cmd-1.6.0.tar.gz`
-6. Remove useless archive : `rm s3cmd-1.6.0.tar.gz`
-7. Navigate into folder : `cd s3cmd-1.6.0`
+4. Download source archive : `wget http://downloads.sourceforge.net/project/s3tools/s3cmd/2.0.1/s3cmd-2.0.1.tar.gz`
+5. Uncompressed the archive : `tar -zxvf s3cmd-2.0.1.tar.gz`
+6. Remove useless archive : `rm s3cmd-2.0.1.tar.gz`
+7. Navigate into folder : `cd s3cmd-2.0.1`
 8. Launch the install script `sudo python setup.py install`
 
 ### 2. Configure S3
