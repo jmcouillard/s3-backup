@@ -17,7 +17,7 @@ define('HTTP_FOLDER',  "/httpdocs");
 define('PYTHONPATH', "/usr/bin/python". ":" . "/usr/lib/python2.6");
 define('S3CFG_FILE_PATH', "/root/.s3cfg");
 define('S3CMD_FILE', "/usr/bin/s3cmd");
-define('S3_REMOTE_PATH', "jmcouillard/gsbackup/");
+define('S3_REMOTE_PATH', "jmcouillard-mtl/gtbackup/");
 
 
 /******************************************************************************
@@ -45,6 +45,7 @@ $tasks = array();
 createBaseTasks();
 createDatabasesTask($dbs, $datestamp);
 createDomainsTasks($domains, $datestamp);
+createFilesTasks($domains, $datestamp);
 createMailTasks($webspaces, $datestamp);
 
 ksort($tasks);
@@ -124,6 +125,40 @@ function createDomainsTasks($domains, $datestamp) {
 
         // Add task
         $tasks[$domain["name"]." DOMAIN"] = $cmds;
+	}
+}
+
+function createFilesTasks($domains, $datestamp) {
+	
+	global $tasks;
+	
+	// Output command
+	foreach($domains as $key => $domain) {
+	    
+	    $file = $domain["name"] . ".files.tar.gz";
+	    $storage = "/home/storage" . str_replace("httpdocs/", "", $domain["path"]);
+	    $cmds = array();
+	    
+	    // Go to domains
+		// $cmds[] = "cd " . DOMAINS_PATH . $domain;
+
+	    // Conditional
+		$cmds[] = "if [ -d \"{$storage}\" ]; then";
+	    
+	    // Zip file
+		$cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $storage;
+
+		// Upload to s3
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+       
+       	// Remove file
+		$cmds[] = "rm " . BACKUP_PATH . $file;
+		
+	    // Conditional
+		$cmds[] = "fi";
+
+        // Add task
+        $tasks[$domain["name"]." FILES"] = $cmds;
 	}
 }
 
