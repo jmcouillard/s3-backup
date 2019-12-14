@@ -173,7 +173,7 @@ function createDatabasesTask($dbs, $datestamp) {
 	// Output command
 	foreach($dbs as $key => $db) {
 	    
-	    $file = $db . "sql.tar.gz";
+	    $file = $db . ".sql.tar.gz";
 	    $cmds = array();
 
 	    // Defin which mysql password to use
