@@ -7,7 +7,7 @@
  ******************************************************************************/
 
 define('DOMAINS_PATH', '/var/www/vhosts/');
-define('BACKUP_PATH', "/root/data/backups/");
+define('BACKUP_PATH', "/home/backup/backups/");
 define('HTTP_FOLDER',  "/httpdocs");
 
 
@@ -118,7 +118,7 @@ function createDomainsTasks($domains, $datestamp) {
 		$cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $domain["path"];
 		
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
        
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -135,7 +135,7 @@ function createFilesTasks($domains, $datestamp) {
 	// Output command
 	foreach($domains as $key => $domain) {
 	    
-	    $file = $domain["name"] . ".files.tar.gz";
+	    $file = $domain["name"] . ".files.tar";
 	    $storage = "/home/storage" . str_replace("httpdocs/", "", $domain["path"]);
 	    $cmds = array();
 	    
@@ -145,11 +145,15 @@ function createFilesTasks($domains, $datestamp) {
 	    // Conditional
 		$cmds[] = "if [ -d \"{$storage}\" ]; then";
 	    
-	    // Zip file
-		$cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $storage;
+	    // Create archive file (no compression)
+		$cmds[] = "tar -cPf " . BACKUP_PATH . $file . " " . $storage;
+
+	    // Zip file (with compression level at 1 using --fast)
+		// $cmds[] = "gzip -v --fast " . BACKUP_PATH . $file;
+		// $file = $file . ".gz";
 
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
        
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -186,7 +190,7 @@ function createDatabasesTask($dbs, $datestamp) {
 		$cmds[] = "tar -zcPf " . $file . " " . $db . ".sql";
 		
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
         
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -215,8 +219,11 @@ function createMailTasks($webspaces, $datestamp)
 		// $cmds[] = "/usr/local/psa/bin/pleskbackup domains-name ".$webspace." -v --only-mail --output-file=".BACKUP_PATH.$file; 
 		
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file;
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
 	    
+       	// Remove file
+		$cmds[] = "rm " . BACKUP_PATH . $file;
+
 	    // Conditional
 		$cmds[] = "fi";
         
