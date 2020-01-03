@@ -108,14 +108,17 @@ function createDomainsTasks($domains, $datestamp) {
 	// Output command
 	foreach($domains as $key => $domain) {
 	    
-	    $file = $domain["name"] . ".tar.gz";
+	    $file = $domain["name"] . ".tar";
 	    $cmds = array();
 	    
 	    // Go to domains
 		// $cmds[] = "cd " . DOMAINS_PATH . $domain;
 	    
+	    // Create archive file (no compression)
+		$cmds[] = "tar -cPf " . BACKUP_PATH . $file . " " . $domain["path"];
+
 	    // Zip file
-		$cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $domain["path"];
+		// $cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $domain["path"];
 		
 		// Upload to s3
 		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
@@ -173,7 +176,7 @@ function createDatabasesTask($dbs, $datestamp) {
 	// Output command
 	foreach($dbs as $key => $db) {
 	    
-	    $file = $db . ".sql.tar.gz";
+	    $file = $db . ".sql.tar";
 	    $cmds = array();
 
 	    // Defin which mysql password to use
@@ -186,8 +189,11 @@ function createDatabasesTask($dbs, $datestamp) {
 	    // Go to backup
 		$cmds[] = "cd " . BACKUP_PATH;
 
+	    // Create archive file (no compression)
+		$cmds[] = "tar -cPf " . $file . " " . $db . ".sql";
+
 	    // Zip file
-		$cmds[] = "tar -zcPf " . $file . " " . $db . ".sql";
+		// $cmds[] = "tar -zcPf " . $file . " " . $db . ".sql";
 		
 		// Upload to s3
 		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
