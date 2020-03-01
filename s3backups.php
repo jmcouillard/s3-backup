@@ -122,7 +122,7 @@ function createDomainsTasks($domains, $datestamp) {
 	    
 	    // Create archive file (no compression)
         $cmds[] = 'echo "--> Creating archive"';
-		$cmds[] = "tar -cPf " . BACKUP_PATH . $file . " " . $domain["path"];
+		$cmds[] = "tar -cPf \"" . BACKUP_PATH . $file . "\" \"" . $domain["path"] . "\"";
 
 	    // Zip file
 		// $cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $domain["path"];
@@ -158,7 +158,7 @@ function createFilesTasks($domains, $datestamp) {
 	    
 	    // Create archive file (no compression)
         $cmds[] = 'echo "--> Creating archive"';
-		$cmds[] = "tar -cPf " . BACKUP_PATH . $file . " " . $storage;
+		$cmds[] = "tar -cPf \"" . BACKUP_PATH . $file . "\" \"" . $storage . "\"";
 
 	    // Zip file (with compression level at 1 using --fast)
 		// $cmds[] = "gzip -v --fast " . BACKUP_PATH . $file;
@@ -201,7 +201,7 @@ function createDatabasesTask($dbs, $datestamp) {
 
 	    // Create archive file (no compression)
         $cmds[] = 'echo "--> Creating archive"';
-		$cmds[] = "tar -cPf " . $file . " " . $db . ".sql";
+		$cmds[] = "tar -cPf \"" . $file . "\" \"" . $db . ".sql\"";
 
 	    // Zip file
 		// $cmds[] = "tar -zcPf " . $file . " " . $db . ".sql";
