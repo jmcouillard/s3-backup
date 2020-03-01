@@ -38,15 +38,21 @@ $datestamp = date("Y-m-d-H-i-s", time());
 $webspaces = getWebspaces();
 $domains = getDomains($webspaces);
 $mysqlpassword = defined('DB_PASS_SHADOW') ? trim(file_get_contents(DB_PASS_SHADOW)) : DB_PASS;
-$link = mysql_connect(DB_HOST,DB_USER,$mysqlpassword);
+$link = mysqli_connect(DB_HOST, DB_USER, $mysqlpassword);
 $dbs = getDatabases($link);
 $tasks = array();
 
 createBaseTasks();
 createDatabasesTask($dbs, $datestamp);
 createDomainsTasks($domains, $datestamp);
-createFilesTasks($domains, $datestamp);
-createMailTasks($webspaces, $datestamp);
+
+// Uncomment to use Files Tasks.
+// This is required if you are using symlinks to a storage folder
+// Since we switched to mounting (--mount), these additional tasks are not required anymore.
+// createFilesTasks($domains, $datestamp);
+
+// Uncomment to use Mail Tasks.
+// createMailTasks($webspaces, $datestamp);
 
 ksort($tasks);
 
@@ -72,7 +78,7 @@ function outputShell() {
     
     $output = "";
     foreach($tasks as $task => $cmds) {
-        $output .= 'echo "Processing ' . $task . ' ..."' . "\n";
+        $output .= "echo \"\nProcessing " . $task . " ...\"\n";
         $output .= implode("\n", $cmds);
         $output .= "\n";
     }    
@@ -115,13 +121,15 @@ function createDomainsTasks($domains, $datestamp) {
 		// $cmds[] = "cd " . DOMAINS_PATH . $domain;
 	    
 	    // Create archive file (no compression)
+        $cmds[] = 'echo "--> Creating archive"';
 		$cmds[] = "tar -cPf " . BACKUP_PATH . $file . " " . $domain["path"];
 
 	    // Zip file
 		// $cmds[] = "tar -zcPf " . BACKUP_PATH . $file . " " . $domain["path"];
 		
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
+        $cmds[] = 'echo "--> Uploading archive"';
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5 --no-progress";
        
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -149,6 +157,7 @@ function createFilesTasks($domains, $datestamp) {
 		$cmds[] = "if [ -d \"{$storage}\" ]; then";
 	    
 	    // Create archive file (no compression)
+        $cmds[] = 'echo "--> Creating archive"';
 		$cmds[] = "tar -cPf " . BACKUP_PATH . $file . " " . $storage;
 
 	    // Zip file (with compression level at 1 using --fast)
@@ -156,7 +165,8 @@ function createFilesTasks($domains, $datestamp) {
 		// $file = $file . ".gz";
 
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
+        $cmds[] = 'echo "--> Uploading archive"';
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5 --no-progress";
        
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -190,13 +200,15 @@ function createDatabasesTask($dbs, $datestamp) {
 		$cmds[] = "cd " . BACKUP_PATH;
 
 	    // Create archive file (no compression)
+        $cmds[] = 'echo "--> Creating archive"';
 		$cmds[] = "tar -cPf " . $file . " " . $db . ".sql";
 
 	    // Zip file
 		// $cmds[] = "tar -zcPf " . $file . " " . $db . ".sql";
 		
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
+        $cmds[] = 'echo "--> Uploading archive"';
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5 --no-progress";
         
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -221,11 +233,13 @@ function createMailTasks($webspaces, $datestamp)
 		$cmds[] = "if [ -f /usr/local/psa/bin/pleskbackup ]; then";
 	    
 	    // Zip file
+        $cmds[] = 'echo "--> Creating archive"';
 		$cmds[] = "/usr/local/psa/bin/pleskbackup domains-name ".$webspace." --only-mail --output-file=".BACKUP_PATH.$file; 
 		// $cmds[] = "/usr/local/psa/bin/pleskbackup domains-name ".$webspace." -v --only-mail --output-file=".BACKUP_PATH.$file; 
 		
 		// Upload to s3
-		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5";
+        $cmds[] = 'echo "--> Uploading archive"';
+		$cmds[] = "export PYTHONPATH=" . PYTHONPATH . "; " . S3CMD_FILE . " -c " . S3CFG_FILE_PATH . " -H put ".BACKUP_PATH ."$file s3://".S3_REMOTE_PATH.$datestamp."/".$file." --storage-class=STANDARD_IA --no-check-md5 --no-progress";
 	    
        	// Remove file
 		$cmds[] = "rm " . BACKUP_PATH . $file;
@@ -247,7 +261,7 @@ function getWebspaces()
 		$webspaces = $argv;
 		array_shift($webspaces);
 	} else {
-		$webspaces = array("");	
+		$webspaces = array();	
 	}
 
 	return $webspaces;
@@ -295,10 +309,10 @@ function compareDomains($a, $b)
 function getDatabases($link) {
 
    $list = Array();
-   $dbs = @mysql_list_dbs($link);
+   $res = mysqli_query($link, "SHOW DATABASES");
 
-    while ($row = @mysql_fetch_object($dbs)) {
-        if ($row->Database != 'information_schema') { $list[] = $row->Database; }
+    while ($row = mysqli_fetch_assoc($res)) {
+        if ($row["Database"] != 'information_schema') { $list[] = $row["Database"]; }
     }
     
    return $list;
