@@ -17,7 +17,7 @@ define('HTTP_FOLDER',  "/httpdocs");
 define('PYTHONPATH', "/usr/bin/python". ":" . "/usr/lib/python2.6");
 define('S3CFG_FILE_PATH', "/root/.s3cfg");
 define('S3CMD_FILE', "/usr/bin/s3cmd");
-define('S3_REMOTE_PATH', "jmcouillard-mtl/gtbackup/");
+define('S3_REMOTE_PATH', "my-bucket-name/myfolder/");
 
 
 /******************************************************************************
@@ -38,7 +38,7 @@ $datestamp = date("Y-m-d-H-i-s", time());
 $webspaces = getWebspaces();
 $domains = getDomains($webspaces);
 $mysqlpassword = defined('DB_PASS_SHADOW') ? trim(file_get_contents(DB_PASS_SHADOW)) : DB_PASS;
-$link = mysqli_connect(DB_HOST, DB_USER, $mysqlpassword);
+$link = new mysqli(DB_HOST, DB_USER, $mysqlpassword);
 $dbs = getDatabases($link);
 $tasks = array();
 
@@ -309,9 +309,9 @@ function compareDomains($a, $b)
 function getDatabases($link) {
 
    $list = Array();
-   $res = mysqli_query($link, "SHOW DATABASES");
+   $dbs = $link->query("SHOW DATABASES", MYSQLI_USE_RESULT);
 
-    while ($row = mysqli_fetch_assoc($res)) {
+    while ($row = mysqli_fetch_assoc($dbs)) {
         if ($row["Database"] != 'information_schema') { $list[] = $row["Database"]; }
     }
     
