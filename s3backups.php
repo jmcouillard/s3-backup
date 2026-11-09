@@ -38,7 +38,7 @@ $datestamp = date("Y-m-d-H-i-s", time());
 $webspaces = getWebspaces();
 $domains = getDomains($webspaces);
 $mysqlpassword = defined('DB_PASS_SHADOW') ? trim(file_get_contents(DB_PASS_SHADOW)) : DB_PASS;
-$link = new mysqli(DB_HOST, DB_USER, $mysqlpassword);
+$link = mysqli_connect(DB_HOST, DB_USER, $mysqlpassword);
 $dbs = getDatabases($link);
 $tasks = array();
 
@@ -269,12 +269,13 @@ function getWebspaces()
 
 function getDomains($webspaces)
 {
+    $domains = array();
 
 	clearstatcache();
 	
 	foreach ($webspaces as $webspace) {
 
-		// Open websace folder and list its files
+		// Open webspace folder and list its files
 		$webspaceHttpFolder = DOMAINS_PATH  . $webspace .  HTTP_FOLDER;
 	    $dh = opendir($webspaceHttpFolder);
 
@@ -309,9 +310,9 @@ function compareDomains($a, $b)
 function getDatabases($link) {
 
    $list = Array();
-   $dbs = $link->query("SHOW DATABASES", MYSQLI_USE_RESULT);
+   $res = mysqli_query($link, "SHOW DATABASES");
 
-    while ($row = mysqli_fetch_assoc($dbs)) {
+    while ($row = mysqli_fetch_assoc($res)) {
         if ($row["Database"] != 'information_schema') { $list[] = $row["Database"]; }
     }
     
